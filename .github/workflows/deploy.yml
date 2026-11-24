@@ -1,0 +1,29 @@
+name: CI/CD Deploy One-Page na AWS EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH na EC2 usando Docker
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            if [ ! -d "app" ]; then
+              git clone https://github.com/${{ github.repository }}.git app
+            fi
+            cd app
+            git pull origin main
+            docker build -t onepage-empresa .
+            docker stop onepage-container || true
+            docker rm onepage-container || true
+            docker run -d --name onepage-container -p 80:80 --restart always onepage-empresa
